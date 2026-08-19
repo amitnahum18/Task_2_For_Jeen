@@ -59,6 +59,14 @@ Sample fixtures are provided in `docs/` (`example.pdf`, `example.docx`) - a shor
 
 The sentence splitter is a lightweight heuristic, not a trained model - it can still mis-split on unusual abbreviations it doesn't recognize, which just yields a slightly-off chunk boundary rather than a failure.
 
+## Embeddings
+
+`document_indexer.embeddings` calls the Gemini API (`gemini-embedding-001`) via the official `google-genai` SDK:
+
+- `embed_chunks(texts, api_key, dimensions)` - batches all chunks from a document into a single API call, using task type `RETRIEVAL_DOCUMENT`.
+- `embed_query(text, api_key, dimensions)` - embeds a search query using task type `RETRIEVAL_QUERY`, which the Gemini model uses to optimize the vector for matching against documents rather than other queries.
+- `dimensions` is requested via the API's `output_dimensionality` parameter and must match `EMBEDDING_DIM` / the database's vector column size. Every returned embedding is checked against the expected dimension before being handed back to the caller.
+
 ## Error Handling
 
 | Condition | Behavior |
@@ -68,6 +76,7 @@ The sentence splitter is a lightweight heuristic, not a trained model - it can s
 | Document has no extractable text (e.g. a scanned PDF with no text layer) | `NoExtractableTextError` |
 | Invalid chunking parameters (e.g. `overlap >= chunk_size`, non-positive `chunk_size`) | `ValueError` |
 | Unknown `--strategy` value | `ValueError` |
+| Gemini API call fails (network, auth, quota) or returns an unexpected embedding size | `EmbeddingGenerationError` |
 
 ## Testing
 
