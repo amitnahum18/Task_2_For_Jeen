@@ -38,6 +38,17 @@ This project uses a managed PostgreSQL instance with the [pgvector](https://gith
 2. Enable the `vector` extension (Supabase: Database → Extensions → `vector`; Neon: run `CREATE EXTENSION IF NOT EXISTS vector;` in the SQL editor).
 3. Copy the connection string into `POSTGRES_URL` in your `.env` file.
 
+`document_indexer.db.init_schema()` creates the rest automatically (idempotent - safe to run on every startup): the `vector` extension, the `document_chunks` table, and an HNSW cosine-distance index.
+
+| Column | Type |
+|---|---|
+| `id` | `SERIAL PRIMARY KEY` |
+| `chunk_text` | `TEXT NOT NULL` |
+| `embedding` | `VECTOR(EMBEDDING_DIM) NOT NULL` |
+| `filename` | `TEXT NOT NULL` |
+| `split_strategy` | `TEXT NOT NULL` |
+| `created_at` | `TIMESTAMPTZ NOT NULL DEFAULT now()` |
+
 ## Text Extraction
 
 `document_indexer.extraction.extract_text()` accepts a `.pdf` or `.docx` path and returns cleaned, whitespace-normalized text, with paragraph breaks kept as blank lines wherever the source format exposes them:
@@ -77,6 +88,8 @@ The sentence splitter is a lightweight heuristic, not a trained model - it can s
 | Invalid chunking parameters (e.g. `overlap >= chunk_size`, non-positive `chunk_size`) | `ValueError` |
 | Unknown `--strategy` value | `ValueError` |
 | Gemini API call fails (network, auth, quota) or returns an unexpected embedding size | `EmbeddingGenerationError` |
+| Database connection cannot be established | `DatabaseConnectionError` |
+| Search on an empty table | Empty result list (not an error) |
 
 ## Testing
 
