@@ -47,6 +47,18 @@ This project uses a managed PostgreSQL instance with the [pgvector](https://gith
 
 Sample fixtures are provided in `docs/` (`example.pdf`, `example.docx`) - a short multi-section support guide used in the run examples below.
 
+## Chunking Strategies
+
+`document_indexer.chunking.chunk_text(text, strategy, **kwargs)` supports three strategies, selected with `--strategy` on the CLI:
+
+| Strategy | How it splits | Key parameters |
+|---|---|---|
+| `fixed_size` | Fixed-width character windows, each overlapping the previous one | `chunk_size` (default 1000), `overlap` (default 200) |
+| `sentence` | Sentences (regex + capitalization heuristic, with guards for common abbreviations like "Dr." or "e.g.") are greedily packed into chunks up to a size limit without splitting mid-sentence | `chunk_size` (default 1000) |
+| `paragraph` | One chunk per paragraph (blank-line separated); see [Text Extraction](#text-extraction) for how paragraph boundaries are determined per file type | - |
+
+The sentence splitter is a lightweight heuristic, not a trained model - it can still mis-split on unusual abbreviations it doesn't recognize, which just yields a slightly-off chunk boundary rather than a failure.
+
 ## Error Handling
 
 | Condition | Behavior |
@@ -54,6 +66,8 @@ Sample fixtures are provided in `docs/` (`example.pdf`, `example.docx`) - a shor
 | File does not exist | `FileNotFoundError` |
 | Extension is not `.pdf`/`.docx` | `UnsupportedFileTypeError` |
 | Document has no extractable text (e.g. a scanned PDF with no text layer) | `NoExtractableTextError` |
+| Invalid chunking parameters (e.g. `overlap >= chunk_size`, non-positive `chunk_size`) | `ValueError` |
+| Unknown `--strategy` value | `ValueError` |
 
 ## Testing
 
