@@ -11,7 +11,7 @@ import argparse
 import sys
 
 from document_indexer.config import load_config
-from document_indexer.db import connect, search
+from document_indexer.db import SearchResult, connect, search
 from document_indexer.embeddings import embed_query
 from document_indexer.exceptions import DocumentIndexerError
 
@@ -25,7 +25,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _format_result(rank: int, result) -> str:
+def _format_result(rank: int, result: SearchResult) -> str:
     preview = result.chunk_text
     if len(preview) > CHUNK_PREVIEW_LENGTH:
         preview = preview[:CHUNK_PREVIEW_LENGTH].rstrip() + "..."

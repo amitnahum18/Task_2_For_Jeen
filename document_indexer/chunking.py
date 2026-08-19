@@ -112,8 +112,8 @@ def split_sentences(text: str) -> list[str]:
 
 
 def _pack_units(units: list[str], chunk_size: int) -> list[str]:
-    """Greedily pack text units (sentences, paragraphs, ...) into chunks no
-    larger than chunk_size, without splitting a unit across chunks."""
+    """Greedily pack text units (e.g. sentences) into chunks no larger than
+    chunk_size, without splitting a unit across chunks."""
     chunks: list[str] = []
     current: list[str] = []
     current_len = 0

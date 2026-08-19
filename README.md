@@ -4,6 +4,24 @@ A Python pipeline that extracts text from PDF/DOCX files, splits it into
 chunks using multiple strategies, generates embeddings with the Gemini API,
 and stores everything in PostgreSQL with pgvector for semantic search.
 
+## Project Structure
+
+```
+index_documents.py          CLI: index a document
+search.py                   CLI: semantic search
+document_indexer/
+  config.py                 .env loading and validation
+  exceptions.py              custom exception hierarchy
+  extraction.py              PDF/DOCX -> clean text
+  chunking.py                 fixed_size / sentence / paragraph strategies
+  embeddings.py               Gemini API wrapper
+  db.py                       PostgreSQL + pgvector: schema, insert, search
+docs/                        sample PDF/DOCX used in the run examples below
+tests/
+  unit/                       mocked, no network or database needed
+  integration/                real-database rigor suite (pytest -m integration)
+```
+
 ## Prerequisites
 
 - Python 3.11+

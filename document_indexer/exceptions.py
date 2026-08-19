@@ -26,4 +26,6 @@ class DatabaseConnectionError(DocumentIndexerError):
 
 
 class InvalidEmbeddingError(DocumentIndexerError):
-    """Raised when an embedding vector is malformed: wrong dimension, empty, or non-finite values."""
+    """Raised when an embedding vector is rejected as malformed - wrong
+    dimension, NULL, or non-finite (NaN/Infinity) values - whether caught
+    before sending it to the database or by pgvector itself."""

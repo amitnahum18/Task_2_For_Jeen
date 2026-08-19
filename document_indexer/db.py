@@ -147,7 +147,7 @@ def search(
                            embedding <=> %s::vector AS distance
                     FROM {table_name}
                 ) scored
-                WHERE distance = distance
+                WHERE distance = distance  -- excludes NaN (NaN is never equal to itself)
                 ORDER BY distance
                 LIMIT %s
                 """,
