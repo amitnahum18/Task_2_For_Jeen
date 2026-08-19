@@ -134,10 +134,44 @@ The sentence splitter is a lightweight heuristic, not a trained model - it can s
 - `embed_query(text, api_key, dimensions)` - embeds a search query using task type `RETRIEVAL_QUERY`, which the Gemini model uses to optimize the vector for matching against documents rather than other queries.
 - `dimensions` is requested via the API's `output_dimensionality` parameter and must match `EMBEDDING_DIM` / the database's vector column size. Every returned embedding is checked against the expected dimension before being handed back to the caller.
 
+## Python API Reference
+
+Every module is usable directly, not only through the two CLI scripts.
+
+**`document_indexer.config`**
+- `load_config() -> Config` - reads and validates `GEMINI_API_KEY`, `POSTGRES_URL`, `EMBEDDING_DIM` from the environment. Raises `ConfigError` if something required is missing or malformed. `Config`'s `repr()` masks the key and connection string so they never leak into logs or tracebacks.
+
+**`document_indexer.extraction`**
+- `extract_text(file_path) -> str` - see [Text Extraction](#text-extraction).
+
+**`document_indexer.chunking`**
+- `chunk_text(text, strategy, **kwargs) -> list[str]` - dispatches to one of the three functions below by strategy name; see [Chunking Strategies](#chunking-strategies).
+- `chunk_fixed_size(text, chunk_size=1000, overlap=200) -> list[str]`
+- `chunk_by_sentences(text, chunk_size=1000) -> list[str]`
+- `chunk_by_paragraphs(text) -> list[str]`
+- `split_sentences(text) -> list[str]` - the sentence-boundary detector behind `chunk_by_sentences`; also usable standalone.
+
+**`document_indexer.embeddings`**
+- `embed_chunks(texts, api_key, dimensions) -> list[list[float]]` - see [Embeddings](#embeddings).
+- `embed_query(text, api_key, dimensions) -> list[float]`
+
+**`document_indexer.db`**
+- `connect(postgres_url)` - context manager yielding a psycopg2 connection with the pgvector adapter registered; wraps connection failures as `DatabaseConnectionError`.
+- `init_schema(conn, dimensions, table_name="document_chunks")` - creates the `vector` extension, the table, and an HNSW cosine-distance index (idempotent).
+- `insert_chunks(conn, records: list[ChunkRecord], table_name="document_chunks")` - batch insert; no-op on an empty list.
+- `search(conn, query_embedding, top_k=5, table_name="document_chunks") -> list[SearchResult]` - see [Database](#database) and the rigor suite below.
+- `ChunkRecord(chunk_text, embedding, filename, split_strategy)` - one chunk ready to store.
+- `SearchResult(id, chunk_text, filename, split_strategy, created_at, distance)` - one search hit.
+
+`table_name` always defaults to `document_chunks`; it exists only so the integration test suite can point each test at its own disposable table. The CLI scripts never override it.
+
 ## Error Handling
+
+All custom exceptions below inherit from `document_indexer.exceptions.DocumentIndexerError`, which is what both CLI scripts catch at the top level to print a clean `Error: ...` message and exit `1` instead of showing a raw traceback.
 
 | Condition | Behavior |
 |---|---|
+| Required `.env` variable missing or invalid (e.g. non-numeric `EMBEDDING_DIM`) | `ConfigError` |
 | File does not exist | `FileNotFoundError` |
 | Extension is not `.pdf`/`.docx` | `UnsupportedFileTypeError` |
 | Document has no extractable text (e.g. a scanned PDF with no text layer) | `NoExtractableTextError` |
