@@ -89,12 +89,31 @@ The sentence splitter is a lightweight heuristic, not a trained model - it can s
 | Unknown `--strategy` value | `ValueError` |
 | Gemini API call fails (network, auth, quota) or returns an unexpected embedding size | `EmbeddingGenerationError` |
 | Database connection cannot be established | `DatabaseConnectionError` |
+| pgvector rejects a record or query (bad dimension, `NaN`/`Infinity`, `NULL` embedding) | `InvalidEmbeddingError` |
 | Search on an empty table | Empty result list (not an error) |
 
 ## Testing
 
 ```bash
-pytest
+pytest                  # unit tests only (no external services needed)
+pytest -m integration   # also run the real-database rigor suite below (needs POSTGRES_URL)
 ```
 
-Unit tests generate their own minimal PDF/DOCX fixtures on the fly (via `tmp_path`) rather than depending on `docs/example.*`, so each test controls exactly the input it needs.
+Unit tests generate their own minimal PDF/DOCX fixtures on the fly (via `tmp_path`) rather than depending on `docs/example.*`, mock the Gemini client, and mock psycopg2 - none of them touch a network or a real database, so they run in about a second.
+
+### Invalid-vector rigor suite (`tests/integration/test_db_integration.py`)
+
+Mocks can't reproduce pgvector's actual constraint enforcement, so this suite runs against a real database (a fresh, uniquely-named table per test, dropped afterward) and asserts on pgvector's real behavior rather than assumed behavior:
+
+| Case | Verified behavior |
+|---|---|
+| `NULL` embedding | Rejected by the `NOT NULL` constraint -> `InvalidEmbeddingError` |
+| Wrong-dimension embedding (e.g. 5 values into a `VECTOR(3)` column) | Rejected by pgvector's own type check -> `InvalidEmbeddingError` |
+| `NaN` in an embedding | Rejected at insert time ("NaN not allowed in vector") -> `InvalidEmbeddingError` |
+| `Infinity` in an embedding | Rejected at insert time -> `InvalidEmbeddingError` |
+| One bad record in a batch insert | The whole batch fails together (single statement) rather than partially inserting |
+| Search query with the wrong dimension | Rejected -> `InvalidEmbeddingError` |
+| A stored zero vector (the one vector pgvector *will* store that's still problematic - cosine distance against it is mathematically undefined) | `search()` explicitly filters out non-finite (`NaN`) distances rather than crashing or sorting them arbitrarily |
+| Search on an empty table | Returns `[]`, no error |
+
+Because NULL/NaN/Infinity/wrong-dimension are all rejected at insert time, a "corrupted row" can only ever reach the table as a mathematically-degenerate-but-valid vector (like all-zeros) - not as literally malformed data. The suite reflects that rather than testing for states pgvector makes unreachable.

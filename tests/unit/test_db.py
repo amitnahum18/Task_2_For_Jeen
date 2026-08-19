@@ -10,7 +10,7 @@ import psycopg2
 import pytest
 
 from document_indexer.db import ChunkRecord, SearchResult, connect, init_schema, insert_chunks, search
-from document_indexer.exceptions import DatabaseConnectionError
+from document_indexer.exceptions import DatabaseConnectionError, InvalidEmbeddingError
 
 
 @pytest.fixture
@@ -122,6 +122,20 @@ class TestInsertChunks:
         ]
         conn.commit.assert_called_once()
 
+    def test_db_error_is_wrapped_and_rolled_back(self, mock_conn, mocker) -> None:
+        conn, cursor = mock_conn
+        mocker.patch(
+            "document_indexer.db.execute_values",
+            side_effect=psycopg2.errors.NotNullViolation("null value in column embedding"),
+        )
+        records = [ChunkRecord("chunk", [0.1, 0.2], "doc.pdf", "paragraph")]
+
+        with pytest.raises(InvalidEmbeddingError):
+            insert_chunks(conn, records)
+
+        conn.rollback.assert_called_once()
+        conn.commit.assert_not_called()
+
 
 class TestSearch:
     def test_maps_rows_into_search_results(self, mock_conn) -> None:
@@ -164,3 +178,12 @@ class TestSearch:
 
         with pytest.raises(ValueError):
             search(conn, [0.1, 0.2], top_k=0)
+
+    def test_db_error_is_wrapped_and_rolled_back(self, mock_conn) -> None:
+        conn, cursor = mock_conn
+        cursor.execute.side_effect = psycopg2.errors.DataException("different vector dimensions 2 and 3")
+
+        with pytest.raises(InvalidEmbeddingError):
+            search(conn, [0.1, 0.2], top_k=5)
+
+        conn.rollback.assert_called_once()
