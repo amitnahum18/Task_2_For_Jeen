@@ -1,9 +1,9 @@
-google-genai>=1.0.0
-psycopg2-binary>=2.9.9
-pgvector>=0.3.6
-pypdf>=4.3.0
-python-docx>=1.1.2
-python-dotenv>=1.0.1
-pytest>=8.3.0
-pytest-mock>=3.14.0
-reportlab>=4.2.5  # used only to generate PDF fixtures for tests/docs, not by the pipeline itself
+google-genai==2.18.1
+psycopg2-binary==2.9.12
+pgvector==0.5.0
+pypdf==6.16.1
+python-docx==1.2.0
+python-dotenv==1.2.3
+pytest==9.1.1
+pytest-mock==3.15.1
+reportlab==5.0.0  # used only to generate PDF fixtures for tests/docs, not by the pipeline itself

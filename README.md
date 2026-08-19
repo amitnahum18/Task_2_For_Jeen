@@ -24,7 +24,7 @@ tests/
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.10+ (developed and tested on 3.12.3)
 - A PostgreSQL database with the pgvector extension available (see [Database](#database))
 - A Gemini API key ([Google AI Studio](https://aistudio.google.com/apikey))
 
