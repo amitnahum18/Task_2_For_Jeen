@@ -50,10 +50,15 @@ Copy `.env.example` to `.env` and fill in the values. Never commit `.env`.
 
 ## Database
 
-This project uses a managed PostgreSQL instance with the [pgvector](https://github.com/pgvector/pgvector) extension (e.g. [Supabase](https://supabase.com) or [Neon](https://neon.tech), both offer a free tier):
+`POSTGRES_URL` can point at **any PostgreSQL 13+ instance with the [pgvector](https://github.com/pgvector/pgvector) extension available (0.5.0+, for HNSW index support)**. Nothing in [`document_indexer/db.py`](document_indexer/db.py) is provider-specific - it only ever runs a plain `psycopg2.connect(...)` and standard SQL (`CREATE EXTENSION`, `CREATE TABLE`, `CREATE INDEX ... USING hnsw`). That includes:
+
+- **Managed cloud Postgres** - e.g. [Neon](https://neon.tech) or [Supabase](https://supabase.com) (used during development; both have a free tier and enable pgvector in one click/command), or Amazon RDS / Google Cloud SQL / Azure Flexible Server (pgvector ships with the engine and just needs enabling).
+- **Self-hosted or Docker** - e.g. the official [`pgvector/pgvector`](https://hub.docker.com/r/pgvector/pgvector) image, or any Postgres install with the extension's files present.
+
+Setup (example using Neon or Supabase):
 
 1. Create a project with either provider.
-2. Enable the `vector` extension (Supabase: Database → Extensions → `vector`; Neon: run `CREATE EXTENSION IF NOT EXISTS vector;` in the SQL editor).
+2. Enable the `vector` extension (Supabase: Database → Extensions → `vector`; Neon: run `CREATE EXTENSION IF NOT EXISTS vector;` in the SQL editor). Self-hosted deployments don't need this step - `init_schema()` (below) already runs `CREATE EXTENSION IF NOT EXISTS vector` itself, it just needs the extension to be installed on the server.
 3. Copy the connection string into `POSTGRES_URL` in your `.env` file.
 
 `document_indexer.db.init_schema()` creates the rest automatically (idempotent - safe to run on every startup): the `vector` extension, the `document_chunks` table, and an HNSW cosine-distance index.
