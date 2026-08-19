@@ -49,6 +49,44 @@ This project uses a managed PostgreSQL instance with the [pgvector](https://gith
 | `split_strategy` | `TEXT NOT NULL` |
 | `created_at` | `TIMESTAMPTZ NOT NULL DEFAULT now()` |
 
+## Usage
+
+Index a document:
+
+```bash
+python index_documents.py --file ./docs/example.pdf --strategy paragraph
+```
+
+```
+Extracted 2378 characters -> 5 chunks (paragraph)
+Indexed 5 chunks from 'example.pdf' into the database.
+```
+
+Search it:
+
+```bash
+python search.py --query "login issue"
+```
+
+```
+1. distance=0.3226  example.pdf (paragraph)
+   Acme Cloud Storage - Support Guide
+If you are unable to log into your account, first verify that you are using the correct email address and
+password. Passwords are case sensitive and must be at least...
+2. distance=0.3381  example.pdf (paragraph)
+   Account access problems can occur when a user is removed from a shared workspace or when
+two-factor authentication is misconfigured. Workspace administrators can restore access from the
+Members page....
+3. distance=0.3776  example.pdf (paragraph)
+   Technical issues such as slow uploads or failed synchronization are usually caused by an unstable
+internet connection or an outdated client application. Start by checking your connection speed and
+res...
+```
+
+(Full run returns 5 results, one per indexed chunk, ranked by ascending cosine distance - the login-related paragraph correctly comes out on top for a "login issue" query. `search.py` also accepts `--top-k N`; `index_documents.py` also accepts `--chunk-size` and, for the `fixed_size` strategy, `--overlap`.)
+
+If the table is empty or nothing is indexed yet, `search.py` prints `No results found.` and exits `0` rather than erroring.
+
 ## Text Extraction
 
 `document_indexer.extraction.extract_text()` accepts a `.pdf` or `.docx` path and returns cleaned, whitespace-normalized text, with paragraph breaks kept as blank lines wherever the source format exposes them:
