@@ -174,7 +174,7 @@ All custom exceptions below inherit from `document_indexer.exceptions.DocumentIn
 | Required `.env` variable missing or invalid (e.g. non-numeric `EMBEDDING_DIM`) | `ConfigError` |
 | File does not exist | `FileNotFoundError` |
 | Extension is not `.pdf`/`.docx` | `UnsupportedFileTypeError` |
-| Document has no extractable text (e.g. a scanned PDF with no text layer) | `NoExtractableTextError` |
+| Document has no extractable text, or is corrupted/unreadable despite a valid extension (e.g. a scanned PDF with no text layer, an empty file, or a file that isn't actually a valid PDF/DOCX) | `NoExtractableTextError` |
 | Invalid chunking parameters (e.g. `overlap >= chunk_size`, non-positive `chunk_size`) | `ValueError` |
 | Unknown `--strategy` value | `ValueError` |
 | Gemini API call fails (network, auth, quota) or returns an unexpected embedding size | `EmbeddingGenerationError` |

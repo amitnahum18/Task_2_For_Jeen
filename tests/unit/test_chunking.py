@@ -72,6 +72,20 @@ class TestSplitSentences:
             "He is available on Monday.",
         ]
 
+    def test_splits_non_latin_script_text(self) -> None:
+        """Hebrew (and most other scripts) have no letter case, so a splitter
+        that required an uppercase Latin letter after the terminator would
+        silently treat an entire Hebrew document as a single sentence."""
+        text = "שלום, זהו משפט ראשון. זהו משפט שני. זהו משפט שלישי."
+
+        sentences = split_sentences(text)
+
+        assert sentences == [
+            "שלום, זהו משפט ראשון.",
+            "זהו משפט שני.",
+            "זהו משפט שלישי.",
+        ]
+
     def test_empty_text_returns_no_sentences(self) -> None:
         assert split_sentences("") == []
 

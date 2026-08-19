@@ -136,6 +136,38 @@ class TestExtractTextErrors:
         with pytest.raises(UnsupportedFileTypeError):
             extract_text(txt_path)
 
+    def test_corrupted_pdf_raises_no_extractable_text_not_a_raw_traceback(
+        self, tmp_path: Path
+    ) -> None:
+        pdf_path = tmp_path / "corrupted.pdf"
+        pdf_path.write_text("this is not a real pdf", encoding="utf-8")
+
+        with pytest.raises(NoExtractableTextError):
+            extract_text(pdf_path)
+
+    def test_zero_byte_pdf_raises_no_extractable_text(self, tmp_path: Path) -> None:
+        pdf_path = tmp_path / "empty.pdf"
+        pdf_path.touch()
+
+        with pytest.raises(NoExtractableTextError):
+            extract_text(pdf_path)
+
+    def test_corrupted_docx_raises_no_extractable_text_not_a_raw_traceback(
+        self, tmp_path: Path
+    ) -> None:
+        docx_path = tmp_path / "corrupted.docx"
+        docx_path.write_text("this is not a real docx", encoding="utf-8")
+
+        with pytest.raises(NoExtractableTextError):
+            extract_text(docx_path)
+
+    def test_zero_byte_docx_raises_no_extractable_text(self, tmp_path: Path) -> None:
+        docx_path = tmp_path / "empty.docx"
+        docx_path.touch()
+
+        with pytest.raises(NoExtractableTextError):
+            extract_text(docx_path)
+
 
 class TestNormalizeWhitespace:
     def test_collapses_repeated_spaces_and_tabs(self) -> None:

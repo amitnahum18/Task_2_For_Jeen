@@ -47,6 +47,20 @@ class TestEmbedChunks:
         assert result == []
         mock_client.models.embed_content.assert_not_called()
 
+    def test_more_than_max_batch_size_is_split_across_multiple_calls(self, mock_client) -> None:
+        """Gemini's embedContent endpoint rejects batches over 100 items, so
+        a document with many chunks must not be sent as one request."""
+        texts = [f"chunk {i}" for i in range(250)]
+        mock_client.models.embed_content.side_effect = lambda model, contents, config: _fake_response(
+            [[0.1, 0.2]] * len(contents)
+        )
+
+        result = embed_chunks(texts, api_key="key", dimensions=2)
+
+        assert len(result) == 250
+        call_sizes = [len(call.kwargs["contents"]) for call in mock_client.models.embed_content.call_args_list]
+        assert call_sizes == [100, 100, 50]
+
     def test_api_failure_raises_embedding_generation_error(self, mock_client) -> None:
         mock_client.models.embed_content.side_effect = RuntimeError("quota exceeded")
 

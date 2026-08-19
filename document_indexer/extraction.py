@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 
@@ -11,6 +12,11 @@ from pypdf import PdfReader
 from document_indexer.exceptions import NoExtractableTextError, UnsupportedFileTypeError
 
 SUPPORTED_EXTENSIONS = {".pdf", ".docx"}
+
+# pypdf logs parse warnings (e.g. "invalid pdf header") straight to stderr on
+# a corrupted file; we already turn that failure into a clean
+# NoExtractableTextError, so the raw warning would just be confusing noise.
+logging.getLogger("pypdf").setLevel(logging.ERROR)
 
 
 def extract_text(file_path: str | Path) -> str:
@@ -23,8 +29,10 @@ def extract_text(file_path: str | Path) -> str:
     Raises:
         FileNotFoundError: if the file does not exist.
         UnsupportedFileTypeError: if the extension is not .pdf or .docx.
-        NoExtractableTextError: if no usable text remains after extraction
-            (e.g. a scanned PDF with no text layer, or an empty document).
+        NoExtractableTextError: if the file has no usable text, or can't be
+            parsed at all (e.g. a scanned PDF with no text layer, an empty
+            file, or one that's corrupted / not actually a PDF or DOCX
+            despite its extension).
     """
     path = Path(file_path)
     if not path.exists():
@@ -37,7 +45,15 @@ def extract_text(file_path: str | Path) -> str:
             f"{', '.join(sorted(SUPPORTED_EXTENSIONS))}"
         )
 
-    raw_text = _extract_pdf_text(path) if extension == ".pdf" else _extract_docx_text(path)
+    try:
+        raw_text = _extract_pdf_text(path) if extension == ".pdf" else _extract_docx_text(path)
+    except Exception as exc:
+        # Intentionally broad: pypdf/python-docx each raise several different
+        # exception types (and don't share one common base) for a corrupted,
+        # truncated, or otherwise unparseable file - all of them mean the
+        # same thing to a caller, so all of them become the same error here.
+        raise NoExtractableTextError(f"Could not read '{path}': {exc}") from exc
+
     clean_text = _normalize_whitespace(raw_text)
 
     if not clean_text.strip():

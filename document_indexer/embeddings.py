@@ -10,6 +10,7 @@ from document_indexer.exceptions import EmbeddingGenerationError
 EMBEDDING_MODEL = "gemini-embedding-001"
 TASK_TYPE_DOCUMENT = "RETRIEVAL_DOCUMENT"
 TASK_TYPE_QUERY = "RETRIEVAL_QUERY"
+MAX_BATCH_SIZE = 100  # Gemini's embedContent API rejects batches larger than this
 
 
 def embed_chunks(texts: list[str], api_key: str, dimensions: int) -> list[list[float]]:
@@ -29,15 +30,18 @@ def _embed(texts: list[str], api_key: str, dimensions: int, task_type: str) -> l
     client = genai.Client(api_key=api_key)
     config = types.EmbedContentConfig(task_type=task_type, output_dimensionality=dimensions)
 
-    try:
-        response = client.models.embed_content(model=EMBEDDING_MODEL, contents=texts, config=config)
-    except Exception as exc:
-        # Intentionally broad: this is the external API boundary, and every
-        # failure mode (auth, network, quota, malformed input) should surface
-        # to callers as the same domain-specific error.
-        raise EmbeddingGenerationError(f"Gemini embedding request failed: {exc}") from exc
+    embeddings: list[list[float]] = []
+    for start in range(0, len(texts), MAX_BATCH_SIZE):
+        batch = texts[start : start + MAX_BATCH_SIZE]
+        try:
+            response = client.models.embed_content(model=EMBEDDING_MODEL, contents=batch, config=config)
+        except Exception as exc:
+            # Intentionally broad: this is the external API boundary, and every
+            # failure mode (auth, network, quota, malformed input) should surface
+            # to callers as the same domain-specific error.
+            raise EmbeddingGenerationError(f"Gemini embedding request failed: {exc}") from exc
+        embeddings.extend(item.values for item in response.embeddings)
 
-    embeddings = [item.values for item in response.embeddings]
     for embedding in embeddings:
         if len(embedding) != dimensions:
             raise EmbeddingGenerationError(

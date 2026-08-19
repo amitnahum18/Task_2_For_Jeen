@@ -15,7 +15,12 @@ _ABBREVIATIONS = {
     "mr", "mrs", "ms", "dr", "prof", "sr", "jr", "vs", "etc",
     "eg", "ie", "inc", "ltd", "co", "approx", "st", "u.s", "u.k",
 }
-_SENTENCE_BOUNDARY_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"'(])")
+# No "next word must start with an uppercase Latin letter" check: Hebrew,
+# Arabic, and most other scripts have no letter case at all, so requiring
+# [A-Z] here would silently treat an entire non-Latin document as one
+# sentence. Any whitespace after a terminator is a candidate boundary;
+# _ABBREVIATIONS below is what keeps "Dr. Smith" from being split.
+_SENTENCE_BOUNDARY_RE = re.compile(r"(?<=[.!?])\s+")
 
 
 def chunk_text(text: str, strategy: str, **kwargs) -> list[str]:
